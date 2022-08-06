@@ -28,14 +28,6 @@ add-apt-repository universe
 echo "Upgrading installed packages in the system"
 echo "###########################################################"
 apt upgrade -y
-echo "Installing dependancies"
-echo "###########################################################"
-# Version 8 has moved json into core code and it is no longer a separate module. 
-apt install -y acl curl composer fping git graphviz imagemagick mariadb-client \
-mariadb-server mtr-tiny nginx-full nmap php8.1-cli php8.1-curl php8.1-fpm \
-php8.1-gd php8.1-mbstring php8.1-mysql php8.1-snmp php8.1-xml \
-php8.1-zip python3-memcache python3-dev python3-pip python3-mysqldb rrdtool \
-snmp snmpd whois unzip
 # Download LibreNMS
 echo "Downloading libreNMS to /opt"
 echo "###########################################################"
@@ -61,33 +53,6 @@ chmod 771 /opt/librenms
 setfacl -d -m g::rwx /opt/librenms/rrd /opt/librenms/logs /opt/librenms/bootstrap/cache/ /opt/librenms/storage/
 # mod ACL recursively
 setfacl -R -m g::rwx /opt/librenms/rrd /opt/librenms/logs /opt/librenms/bootstrap/cache/ /opt/librenms/storage/
-### Install PHP dependencies
-echo "running PHP installer script as librenms user"
-echo "###########################################################"
-# run php dependencies installer
-su librenms bash -c '/opt/librenms/scripts/composer_wrapper.php install --no-dev'
-# Configure MySQL (mariadb)
-echo "Configuring MySQL (mariadb)"
-echo "###########################################################"
-systemctl restart mysql
-# Pass commands to mysql and create DB, user, and privlages
-echo "Please enter a password for the Database:"
-read ANS
-echo "###########################################################"
-echo "######### MySQL DB:librenms Password:$ANS #################"
-echo "###########################################################"
-mysql -uroot -e "CREATE DATABASE librenms CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
-mysql -uroot -e "CREATE USER 'librenms'@'localhost' IDENTIFIED BY '$ANS';"
-mysql -uroot -e "GRANT ALL PRIVILEGES ON librenms.* TO 'librenms'@'localhost';"
-mysql -uroot -e "FLUSH PRIVILEGES;"
-##### Within the [mysqld] section of the config file please add: ####
-## innodb_file_per_table=1
-## lower_case_table_names=0
-sed -i '/mysqld]/ a lower_case_table_names=0' /etc/mysql/mariadb.conf.d/50-server.cnf
-sed -i '/mysqld]/ a innodb_file_per_table=1' /etc/mysql/mariadb.conf.d/50-server.cnf
-##### Restart mysql and enable run at startup
-systemctl restart mysql
-systemctl enable mariadb
 ### Configure and Start PHP-FPM ####
 ## NEW in 20.04 brought forward to 22.04##
 cp /etc/php/8.1/fpm/pool.d/www.conf /etc/php/8.1/fpm/pool.d/librenms.conf
